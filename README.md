@@ -8,7 +8,7 @@ This project documents the process of building an Active Directory environment f
 
 🚧 **In Progress**
 
-Current stage: Configuring and promoting the Windows Server 2019 system as the first Domain Controller for the `eileenlab.test` domain.
+Current stage: The Windows Server 2019 system has been successfully promoted as the first Domain Controller for the `eileenlab.test` domain. Next, I will configure Organizational Units, users, and security groups.
 
 ## Lab Environment
 
@@ -38,19 +38,19 @@ This design will allow the Windows client to communicate with the Domain Control
 
 ## Active Directory Configuration
 
-So far, I have:
+Completed so far:
 
 - Created the Windows Server 2019 virtual machine
 - Configured NAT and internal network adapters
-- Assigned the server a static internal IPv4 address
+- Assigned the server a static internal IPv4 address of `172.16.0.1/24`
 - Installed the Active Directory Domain Services (AD DS) server role
-- Started creation of a new Active Directory forest
-- Configured the root domain as `eileenlab.test`
+- Created a new Active Directory forest
+- Created the root domain `eileenlab.test`
 - Configured `EILEENLAB` as the NetBIOS domain name
-- Enabled DNS Server during Domain Controller configuration
-- Completed the AD DS prerequisite check successfully
-- Started promotion of the server to a Domain Controller
-
+- Installed DNS as part of the Domain Controller deployment
+- Successfully promoted `DC` to a Domain Controller
+- Verified the `eileenlab.test` domain in Active Directory Users and Computers
+  
 ## Lab Progress
 
 | # | Task | Status |
@@ -58,7 +58,7 @@ So far, I have:
 | 1 | Create Windows Server 2019 VM | ✅ Complete |
 | 2 | Configure server networking | ✅ Complete |
 | 3 | Install Active Directory Domain Services | ✅ Complete |
-| 4 | Create `eileenlab.test` domain and promote Domain Controller | 🚧 In Progress |
+| 4 | Create `eileenlab.test` domain and promote Domain Controller | ✅ Complete |
 | 5 | Create Organizational Units, users, and groups | ⏳ Planned |
 | 6 | Configure DHCP | ⏳ Planned |
 | 7 | Create and configure Windows client | ⏳ Planned |
