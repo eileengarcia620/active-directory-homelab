@@ -27,7 +27,7 @@ Current stage: Configuring and promoting the Windows Server 2019 system as the f
 
 ## Current Network Configuration
 
-The Domain Controller VM uses two virtual network adapters:
+The Windows Server VM uses two virtual network adapters:
 
 - **NAT adapter** — provides the Windows Server VM with external network/Internet connectivity through VirtualBox.
 - **Internal Network adapter (`intnet`)** — creates the private lab network that will connect the Domain Controller and Windows client.
