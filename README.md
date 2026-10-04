@@ -1,20 +1,20 @@
 # Active Directory Home Lab
 
-A self-directed Windows Server and Active Directory home lab built to develop hands-on experience with enterprise IT administration, networking, user management, and troubleshooting.
+A self-directed Windows Server and Active Directory home lab built to develop hands-on experience with enterprise IT administration, networking, user management, Group Policy, file sharing, and help-desk troubleshooting.
 
-This project documents my process of building an Active Directory environment from the ground up in Oracle VirtualBox. I am documenting the configuration, verification, and troubleshooting process with screenshots as the lab develops.
+This project documents my process of building a functional Active Directory environment from the ground up in Oracle VirtualBox. The lab includes a Windows Server 2019 Domain Controller, a domain-joined Windows 10 workstation, centralized DHCP and DNS, NAT routing, Active Directory administration, Group Policy, network file sharing, and realistic user-account troubleshooting scenarios.
+
+Screenshots throughout the repository document configuration, verification, and troubleshooting steps.
 
 ## Project Status
 
-🚧 **In Progress – Core Infrastructure Complete**
+✅ **Complete**
 
-The core Active Directory environment is now operational. Active Directory Domain Services, DNS, DHCP, and RRAS/NAT routing have been configured and verified.
+The core Active Directory environment is fully operational and has been tested from both the server and client sides.
 
-A Windows 10 Pro workstation (`CLIENT01`) has been deployed on the internal network. It successfully received its network configuration through DHCP, accessed the Internet through the Domain Controller's RRAS/NAT configuration, and joined the `eileenlab.test` domain.
+A Windows 10 Pro workstation (`CLIENT01`) successfully receives its network configuration from the Domain Controller, accesses the Internet through RRAS/NAT, resolves DNS through the Domain Controller, authenticates domain users, and accesses network resources using Active Directory security-group permissions.
 
-Domain authentication was successfully tested by signing into `CLIENT01` with the `EILEENLAB\sjohnson` domain account. The workstation's computer object was also moved into the `Workstations` OU for future management through Group Policy.
-
-**Current stage:** Expanding the completed core environment with realistic IT administration and help-desk troubleshooting scenarios.
+I also used the completed environment to simulate common help-desk scenarios involving password resets, disabled accounts, account lockouts, and network share access.
 
 ---
 
@@ -31,7 +31,7 @@ Domain authentication was successfully tested by signing into `CLIENT01` with th
 | Internal Network | VirtualBox Internal Network (`intnet`) |
 | DC Internal IPv4 | `172.16.0.1/24` |
 | Internet Connectivity | VirtualBox NAT with RRAS/NAT routing |
-| DHCP Scope | `172.16.0.100` - `172.16.0.200` |
+| DHCP Scope | `172.16.0.100 - 172.16.0.200` |
 | DHCP Gateway | `172.16.0.1` |
 | DHCP DNS Server | `172.16.0.1` |
 | Client OS | Windows 10 Pro |
@@ -43,24 +43,24 @@ Domain authentication was successfully tested by signing into `CLIENT01` with th
 
 ---
 
-## Network Configuration
+## Network Architecture
 
 The Windows Server VM uses two virtual network adapters:
 
 - **NAT adapter** — provides the Domain Controller with external network/Internet connectivity through VirtualBox.
-- **Internal Network adapter (`intnet`)** — provides a private network for communication between the Domain Controller and domain workstations.
+- **Internal Network adapter (`intnet`)** — provides a private network between the Domain Controller and domain workstation.
 
-The Domain Controller uses the static internal IPv4 address:
+The Domain Controller uses the static internal address:
 
 `172.16.0.1/24`
 
-Routing and Remote Access Service (RRAS) was configured to provide NAT routing between the private lab network and the external NAT interface.
+Routing and Remote Access Service (RRAS) provides NAT routing between the private lab network and the external VirtualBox NAT interface.
 
 The traffic path is:
 
 `CLIENT01 → DC (172.16.0.1) → RRAS/NAT → Internet`
 
-This allows `CLIENT01` to remain on the private Active Directory network while using the Domain Controller as its gateway to reach external networks.
+This allows CLIENT01 to remain on the private Active Directory network while using the Domain Controller as its gateway to external networks.
 
 ---
 
@@ -68,13 +68,9 @@ This allows `CLIENT01` to remain on the private Active Directory network while u
 
 I installed Active Directory Domain Services (AD DS) and promoted `DC` as the first Domain Controller for a new forest.
 
-**Domain:**
+**Domain:** `eileenlab.test`
 
-`eileenlab.test`
-
-**NetBIOS domain name:**
-
-`EILEENLAB`
+**NetBIOS domain:** `EILEENLAB`
 
 DNS was installed as part of the Domain Controller deployment.
 
@@ -82,14 +78,14 @@ I verified the domain and its objects using Active Directory Users and Computers
 
 ### Organizational Units
 
-Created the following Organizational Units:
+Created the following OUs:
 
 - `Employees`
 - `Groups`
 - `Admins`
 - `Workstations`
 
-These OUs provide an organized structure for managing users, administrative accounts, security groups, and domain workstations.
+These provide an organized structure for managing users, administrative accounts, security groups, and domain workstations.
 
 ### Domain Users
 
@@ -109,27 +105,27 @@ Created Global Security groups:
 - `IT`
 - `Finance`
 
-Users were assigned to their appropriate departmental security groups.
+Users were assigned to their appropriate departmental groups.
 
-This structure will later be used to practice assigning access to resources based on group membership rather than assigning permissions directly to individual users.
+These groups were later used to control access to network resources. For example, the `HR` security group was granted access to the HR departmental network share rather than assigning permissions directly to Sarah's individual account.
 
 ### Administrative Account
 
-Created a separate administrative account:
+Created a dedicated administrative account:
 
 `labadmin`
 
 The account was added to the built-in `Domain Admins` group.
 
-This allows administrative tasks to be performed using a dedicated privileged account instead of a standard domain user account.
+This allowed privileged administrative tasks to be performed using a separate administrator account instead of a standard domain-user account.
 
 ---
 
 ## DNS Configuration
 
-The Domain Controller also provides DNS services for the internal Active Directory network.
+The Domain Controller provides DNS services for the internal Active Directory network.
 
-`CLIENT01` uses:
+CLIENT01 uses:
 
 `172.16.0.1`
 
@@ -147,7 +143,7 @@ External DNS resolution was tested using:
 nslookup google.com
 ```
 
-Both tests were successful, confirming that `CLIENT01` could use the Domain Controller for DNS resolution.
+Both tests were successful.
 
 ---
 
@@ -155,30 +151,34 @@ Both tests were successful, confirming that `CLIENT01` could use the Domain Cont
 
 The DHCP Server role was installed and authorized in Active Directory.
 
-A DHCP scope named **EileenLab Internal Network** was created with the following configuration:
+A DHCP scope named **EileenLab Internal Network** was configured:
 
 | Setting | Value |
 |---|---|
 | Network | `172.16.0.0/24` |
-| Address Pool | `172.16.0.100` - `172.16.0.200` |
+| Address Pool | `172.16.0.100 - 172.16.0.200` |
 | Subnet Mask | `255.255.255.0` |
 | Default Gateway | `172.16.0.1` |
 | DNS Server | `172.16.0.1` |
 | DNS Domain | `eileenlab.test` |
 
-The scope was activated and successfully assigned `172.16.0.100` to `CLIENT01`.
+The scope successfully assigned `172.16.0.100` to CLIENT01.
 
-The lease was later verified through the DHCP management console on the Domain Controller.
+The lease was also verified through the DHCP management console on the Domain Controller.
 
 ---
 
 ## RRAS / NAT Routing
 
-Routing and Remote Access Service (RRAS) was configured on `DC` to provide NAT routing for the internal lab network.
+Routing and Remote Access Service (RRAS) was configured on `DC` to provide NAT routing for the private lab network.
 
-`CLIENT01` is connected only to the private VirtualBox `intnet` network. It uses the Domain Controller at `172.16.0.1` as its default gateway.
+CLIENT01 is connected only to the VirtualBox `intnet` network and uses:
 
-Internet connectivity was verified from `CLIENT01` using:
+`172.16.0.1`
+
+as its default gateway.
+
+Internet connectivity was verified from CLIENT01 using:
 
 ```cmd
 ping 8.8.8.8
@@ -186,25 +186,25 @@ ping 8.8.8.8
 
 The test returned four successful replies with 0% packet loss.
 
-External DNS resolution was also verified using:
+External DNS resolution was then verified using:
 
 ```cmd
 nslookup google.com
 ```
 
-Together, these tests confirmed that the client could reach the Internet through the Domain Controller and resolve external DNS names.
+Together, these tests confirmed that CLIENT01 could reach external networks through the Domain Controller and resolve external DNS names.
 
 ---
 
 ## CLIENT01 Deployment
 
-A Windows 10 Pro virtual machine was created to act as the first workstation in the lab.
+A Windows 10 Pro virtual machine was deployed as the first workstation in the lab.
 
-The VM was connected to the VirtualBox Internal Network:
+The VM was connected to:
 
 `intnet`
 
-The workstation initially had a Windows-generated computer name and was later renamed:
+The Windows-generated hostname was changed to:
 
 `CLIENT01`
 
@@ -214,7 +214,7 @@ The hostname was verified using:
 hostname
 ```
 
-DHCP automatically provided the workstation with:
+DHCP automatically provided CLIENT01 with:
 
 | Setting | Value |
 |---|---|
@@ -229,7 +229,7 @@ DHCP automatically provided the workstation with:
 
 ## Joining CLIENT01 to Active Directory
 
-After verifying network and DNS connectivity, `CLIENT01` was joined to:
+After verifying network and DNS connectivity, CLIENT01 was joined to:
 
 `eileenlab.test`
 
@@ -237,19 +237,19 @@ The dedicated `labadmin` Domain Admin account was used to authorize the domain j
 
 Windows successfully returned:
 
-> Welcome to the eileenlab.test domain.
+**Welcome to the eileenlab.test domain.**
 
-The workstation was restarted to complete the domain join.
+CLIENT01 was restarted to complete the domain join.
 
 ---
 
 ## Domain User Authentication
 
-After the restart, I signed into `CLIENT01` using the Active Directory user account:
+After the restart, I signed into CLIENT01 using:
 
 `EILEENLAB\sjohnson`
 
-I verified the logged-in identity using:
+The logged-in identity was verified using:
 
 ```cmd
 whoami
@@ -261,7 +261,7 @@ Result:
 eileenlab\sjohnson
 ```
 
-I verified the workstation hostname using:
+The workstation hostname was verified with:
 
 ```cmd
 hostname
@@ -273,7 +273,7 @@ Result:
 CLIENT01
 ```
 
-I also verified which Domain Controller authenticated the session using:
+The authenticating Domain Controller was verified using:
 
 ```cmd
 echo %logonserver%
@@ -285,27 +285,153 @@ Result:
 \\DC
 ```
 
-This confirmed that Sarah's domain account was successfully authenticated against the Domain Controller rather than using a local Windows account.
+This confirmed that Sarah's domain account was authenticated against the Domain Controller rather than a local Windows account.
 
 ---
 
 ## Active Directory Computer Management
 
-When `CLIENT01` joined the domain, Active Directory automatically created a computer object for it in the default `Computers` container.
+When CLIENT01 joined the domain, Active Directory automatically created a computer object for it.
 
-Using Active Directory Users and Computers, I moved the `CLIENT01` computer object into the custom:
+Using Active Directory Users and Computers, I moved the CLIENT01 computer object into the custom:
 
 `Workstations`
 
 OU.
 
-This will allow workstation-specific Group Policy settings to be applied later in the project.
+This provides an organized location for workstation management and Group Policy targeting.
 
 ---
 
-## Troubleshooting Experience
+# Help-Desk Troubleshooting Scenarios
 
-During the setup, I found that `CLIENT01` and the Domain Controller had different time zone configurations.
+After completing the core environment, I used the lab to simulate common entry-level IT support scenarios.
+
+## Password Reset and Forced Password Change
+
+I simulated a user who forgot their domain password.
+
+Using Active Directory Users and Computers, I:
+
+1. Located Sarah Johnson's domain account.
+2. Verified the account status.
+3. Reset the user's password.
+4. Enabled **User must change password at next logon**.
+5. Attempted authentication from CLIENT01.
+6. Verified Windows required the user to change the temporary password.
+7. Successfully changed the password.
+8. Verified Sarah could authenticate with the new password.
+
+This demonstrated the difference between an administrator resetting a password and the user establishing their own password during the next authentication.
+
+---
+
+## Disabled User Account
+
+I intentionally disabled Sarah Johnson's Active Directory account.
+
+When attempting to authenticate from CLIENT01, Windows returned:
+
+**Your account has been disabled. Please see your system administrator.**
+
+I then returned to Active Directory Users and Computers, enabled the account, and verified that Sarah could authenticate again using the same password.
+
+This demonstrated that authentication failures are not always password-related and that account status should be checked during troubleshooting.
+
+---
+
+## Account Lockout and Group Policy
+
+Repeated incorrect password attempts initially did not lock the account.
+
+I investigated the domain's Account Lockout Policy and found that the lockout threshold was not configured to trigger a lockout.
+
+Using Group Policy Management, I configured an account lockout policy with:
+
+| Setting | Value |
+|---|---|
+| Account lockout threshold | 2 invalid logon attempts |
+| Account lockout duration | 10 minutes |
+| Reset account lockout counter after | 10 minutes |
+
+The policy was applied to CLIENT01 using:
+
+```cmd
+gpupdate /force
+```
+
+I then intentionally entered incorrect credentials and successfully triggered an Active Directory account lockout.
+
+CLIENT01 returned:
+
+**The referenced account is currently locked out and may not be logged on to.**
+
+Using Sarah Johnson's Account properties in ADUC, I confirmed that Active Directory showed the account as locked.
+
+I unlocked the account and successfully verified authentication from CLIENT01 using the correct password.
+
+This scenario demonstrated:
+
+- Group Policy configuration
+- Account lockout behavior
+- Identifying the difference between incorrect credentials and a locked account
+- Unlocking an Active Directory user
+- Verifying the resolution from the affected workstation
+
+---
+
+# Department File Sharing
+
+I created departmental folders on the Domain Controller:
+
+```text
+C:\DepartmentShares
+├── HR
+├── IT
+└── Finance
+```
+
+The HR folder was configured as a network share.
+
+Network path:
+
+```text
+\\DC\hr
+```
+
+Instead of assigning access directly to an individual user, I granted the Active Directory `HR` security group **Read/Write** access.
+
+Because Sarah Johnson is a member of the HR security group, her account inherited access through group membership.
+
+### Client Access Verification
+
+From CLIENT01 while authenticated as Sarah Johnson, I opened:
+
+```text
+\\DC\hr
+```
+
+The network share opened successfully.
+
+To verify write access, I created:
+
+```text
+HR-Access-Test.txt
+```
+
+directly inside the network share from CLIENT01.
+
+The successful creation of the file confirmed that:
+
+`Domain User → Security Group → Network Share Permissions → Resource Access`
+
+was functioning as intended.
+
+---
+
+## Troubleshooting During Deployment
+
+During CLIENT01 setup, I discovered that the workstation and Domain Controller had different time-zone configurations.
 
 I checked the systems using:
 
@@ -315,17 +441,17 @@ time /t
 tzutil /g
 ```
 
-The Domain Controller was configured for Eastern Standard Time while `CLIENT01` was configured for Pacific Standard Time.
+The Domain Controller was configured for Eastern Standard Time while CLIENT01 was configured for Pacific Standard Time.
 
 I corrected the client time zone before completing the domain join.
 
-This was an important troubleshooting step because Active Directory authentication relies on Kerberos, which is sensitive to significant time differences between domain systems.
+This was important because Active Directory authentication uses Kerberos, which is sensitive to significant time differences between domain systems.
 
 ---
 
 ## Final CLIENT01 Verification
 
-After the domain join, I ran:
+After joining the domain, I ran:
 
 ```cmd
 ipconfig /all
@@ -345,7 +471,7 @@ This confirmed that the domain-joined workstation retained the expected network 
 
 ---
 
-## Lab Progress
+# Lab Progress
 
 | # | Task | Status |
 |---|---|---|
@@ -357,24 +483,27 @@ This confirmed that the domain-joined workstation retained the expected network 
 | 6 | Create separate Domain Admin account | ✅ Complete |
 | 7 | Configure RRAS/NAT routing | ✅ Complete |
 | 8 | Install and configure DHCP | ✅ Complete |
-| 9 | Deploy and configure Windows 10 `CLIENT01` | ✅ Complete |
+| 9 | Deploy Windows 10 CLIENT01 | ✅ Complete |
 | 10 | Verify DHCP, DNS, and Internet connectivity | ✅ Complete |
-| 11 | Rename workstation to `CLIENT01` | ✅ Complete |
-| 12 | Join `CLIENT01` to `eileenlab.test` | ✅ Complete |
-| 13 | Authenticate to `CLIENT01` with a domain user | ✅ Complete |
+| 11 | Rename workstation to CLIENT01 | ✅ Complete |
+| 12 | Join CLIENT01 to `eileenlab.test` | ✅ Complete |
+| 13 | Authenticate with a domain user | ✅ Complete |
 | 14 | Verify Domain Controller as logon server | ✅ Complete |
-| 15 | Move `CLIENT01` into the `Workstations` OU | ✅ Complete |
-| 16 | Verify `CLIENT01` DHCP lease | ✅ Complete |
-| 17 | Troubleshoot common Active Directory account issues | ⏳ Planned |
-| 18 | Configure shared folders and permissions | ⏳ Planned |
-| 19 | Configure Group Policy | ⏳ Planned |
-| 20 | Configure mapped network drives | ⏳ Planned |
-| 21 | Practice Active Directory administration with PowerShell | ⏳ Planned |
-| 22 | Create and document troubleshooting scenarios | ⏳ Planned |
+| 15 | Move CLIENT01 into Workstations OU | ✅ Complete |
+| 16 | Verify CLIENT01 DHCP lease | ✅ Complete |
+| 17 | Perform domain password reset | ✅ Complete |
+| 18 | Force password change at next logon | ✅ Complete |
+| 19 | Troubleshoot disabled domain account | ✅ Complete |
+| 20 | Configure Account Lockout Policy | ✅ Complete |
+| 21 | Trigger and troubleshoot account lockout | ✅ Complete |
+| 22 | Create departmental network share | ✅ Complete |
+| 23 | Configure group-based share access | ✅ Complete |
+| 24 | Verify network share access from CLIENT01 | ✅ Complete |
+| 25 | Verify write access to HR share | ✅ Complete |
 
 ---
 
-## Skills Being Practiced
+# Skills Demonstrated
 
 - Windows Server 2019 administration
 - Active Directory Domain Services (AD DS)
@@ -390,47 +519,61 @@ This confirmed that the domain-joined workstation retained the expected network 
 - DHCP lease management
 - IPv4 addressing and subnetting
 - NAT and routing with RRAS
-- Windows client administration
-- Group Policy
-- NTFS and share permissions
-- PowerShell administration
+- Windows 10 client administration
+- Group Policy Management
+- Account lockout policies
+- Password resets
+- Account enable/disable administration
+- Account unlock troubleshooting
+- SMB/network file sharing
+- Security-group-based resource access
 - Network troubleshooting
 - Systematic troubleshooting
 - Technical documentation
 
 ---
 
-## Next Phase: Help Desk & Administration Scenarios
+# Key Takeaways
 
-With the core environment operational, the next phase of the project will focus on realistic entry-level IT and help-desk tasks.
+This project helped connect individual Windows Server concepts into a functioning domain environment.
 
-Planned exercises include:
+Rather than configuring each service independently, I was able to see how Active Directory, DNS, DHCP, routing, Group Policy, user authentication, security groups, and shared resources interact with each other.
 
-- Resetting Active Directory user passwords
-- Unlocking locked user accounts
-- Enabling and disabling accounts
-- Managing security group membership
-- Creating shared folders
-- Configuring NTFS permissions
-- Configuring share permissions
-- Creating and applying Group Policy Objects
-- Mapping network drives using Group Policy
-- Using Event Viewer for troubleshooting
-- Managing Active Directory with PowerShell
-- Bulk user creation
-- DNS troubleshooting
-- DHCP and network troubleshooting
-- Intentionally creating configuration problems and diagnosing them
-- Potentially deploying an additional workstation (`CLIENT02`)
+The troubleshooting scenarios also reinforced the importance of identifying the actual cause of an authentication or access problem before making changes.
 
-Each troubleshooting scenario will document the **problem, symptoms, diagnostic process, resolution, and verification**.
+For example, a user who cannot sign in may have:
+
+- An incorrect password
+- A disabled account
+- A locked account
+- A DNS or network connectivity problem
+- A domain communication problem
+
+The lab provided hands-on practice identifying these differences, making administrative changes, and verifying the solution from the client side.
 
 ---
 
-## About Me
+# Challenges & Troubleshooting Process
+
+Building the environment involved several issues that required troubleshooting rather than simply following the planned configuration steps. I documented these because diagnosing unexpected behavior was an important part of the project.
+
+## CLIENT01 Time Configuration
+
+Before completing the domain join, I discovered that CLIENT01 and the Domain Controller were configured with different time zones.
+
+I checked both systems using:
+
+```cmd
+date /t
+time /t
+tzutil /g
+
+
+
+# About Me
 
 **Eileen Garcia-Morales**
 
-U.S. Army veteran with an M.S. in Cybersecurity (Cyber Operations), developing additional hands-on experience in Windows administration, Active Directory, networking, and IT troubleshooting.
+U.S. Army veteran with an M.S. in Cybersecurity (Cyber Operations), developing hands-on experience in Windows administration, Active Directory, networking, and IT troubleshooting.
 
 Currently pursuing CompTIA Security+.
