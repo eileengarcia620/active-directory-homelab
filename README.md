@@ -6,19 +6,21 @@ This project documents my process of building a functional Active Directory envi
 
 Screenshots throughout the repository document configuration, verification, and troubleshooting steps.
 
-## Project Status
+---
+
+# Project Status
 
 ✅ **Complete**
 
-The core Active Directory environment is fully operational and has been tested from both the server and client sides.
+The Active Directory environment is fully operational and has been tested from both the server and client sides.
 
-A Windows 10 Pro workstation (`CLIENT01`) successfully receives its network configuration from the Domain Controller, accesses the Internet through RRAS/NAT, resolves DNS through the Domain Controller, authenticates domain users, and accesses network resources using Active Directory security-group permissions.
+A Windows 10 Pro workstation (`CLIENT01`) successfully receives its network configuration through DHCP, accesses the Internet through RRAS/NAT, resolves DNS through the Domain Controller, authenticates domain users, and accesses network resources using Active Directory security-group permissions.
 
-I also used the completed environment to simulate common help-desk scenarios involving password resets, disabled accounts, account lockouts, and network share access.
+I also used the completed environment to simulate common help-desk scenarios involving password resets, disabled accounts, account lockouts, Group Policy, and network share access.
 
 ---
 
-## Lab Environment
+# Lab Environment
 
 | Component | Configuration |
 |---|---|
@@ -43,14 +45,14 @@ I also used the completed environment to simulate common help-desk scenarios inv
 
 ---
 
-## Network Architecture
+# Network Architecture
 
 The Windows Server VM uses two virtual network adapters:
 
-- **NAT adapter** — provides the Domain Controller with external network/Internet connectivity through VirtualBox.
-- **Internal Network adapter (`intnet`)** — provides a private network between the Domain Controller and domain workstation.
+- **NAT adapter** — provides the Domain Controller with external Internet connectivity through VirtualBox.
+- **Internal Network adapter (`intnet`)** — provides a private network for communication between the Domain Controller and domain workstation.
 
-The Domain Controller uses the static internal address:
+The Domain Controller uses the static internal IPv4 address:
 
 `172.16.0.1/24`
 
@@ -64,7 +66,7 @@ This allows CLIENT01 to remain on the private Active Directory network while usi
 
 ---
 
-## Active Directory Configuration
+# Active Directory Configuration
 
 I installed Active Directory Domain Services (AD DS) and promoted `DC` as the first Domain Controller for a new forest.
 
@@ -76,7 +78,7 @@ DNS was installed as part of the Domain Controller deployment.
 
 I verified the domain and its objects using Active Directory Users and Computers (ADUC).
 
-### Organizational Units
+## Organizational Units
 
 Created the following OUs:
 
@@ -87,7 +89,7 @@ Created the following OUs:
 
 These provide an organized structure for managing users, administrative accounts, security groups, and domain workstations.
 
-### Domain Users
+## Domain Users
 
 Created fictional employee accounts for administration practice:
 
@@ -97,7 +99,7 @@ Created fictional employee accounts for administration practice:
 | Marcus Lee | `mlee` | IT |
 | Olivia Martinez | `omartinez` | Finance |
 
-### Security Groups
+## Security Groups
 
 Created Global Security groups:
 
@@ -107,9 +109,9 @@ Created Global Security groups:
 
 Users were assigned to their appropriate departmental groups.
 
-These groups were later used to control access to network resources. For example, the `HR` security group was granted access to the HR departmental network share rather than assigning permissions directly to Sarah's individual account.
+These groups were later used to control access to network resources. For example, the `HR` security group was granted access to the HR departmental network share rather than assigning access directly to Sarah's individual account.
 
-### Administrative Account
+## Administrative Account
 
 Created a dedicated administrative account:
 
@@ -121,7 +123,7 @@ This allowed privileged administrative tasks to be performed using a separate ad
 
 ---
 
-## DNS Configuration
+# DNS Configuration
 
 The Domain Controller provides DNS services for the internal Active Directory network.
 
@@ -147,7 +149,7 @@ Both tests were successful.
 
 ---
 
-## DHCP Configuration
+# DHCP Configuration
 
 The DHCP Server role was installed and authorized in Active Directory.
 
@@ -168,7 +170,7 @@ The lease was also verified through the DHCP management console on the Domain Co
 
 ---
 
-## RRAS / NAT Routing
+# RRAS / NAT Routing
 
 Routing and Remote Access Service (RRAS) was configured on `DC` to provide NAT routing for the private lab network.
 
@@ -186,7 +188,7 @@ ping 8.8.8.8
 
 The test returned four successful replies with 0% packet loss.
 
-External DNS resolution was then verified using:
+External DNS resolution was verified using:
 
 ```cmd
 nslookup google.com
@@ -196,11 +198,11 @@ Together, these tests confirmed that CLIENT01 could reach external networks thro
 
 ---
 
-## CLIENT01 Deployment
+# CLIENT01 Deployment
 
 A Windows 10 Pro virtual machine was deployed as the first workstation in the lab.
 
-The VM was connected to:
+The VM was connected to the VirtualBox Internal Network:
 
 `intnet`
 
@@ -227,7 +229,7 @@ DHCP automatically provided CLIENT01 with:
 
 ---
 
-## Joining CLIENT01 to Active Directory
+# Joining CLIENT01 to Active Directory
 
 After verifying network and DNS connectivity, CLIENT01 was joined to:
 
@@ -243,13 +245,13 @@ CLIENT01 was restarted to complete the domain join.
 
 ---
 
-## Domain User Authentication
+# Domain User Authentication
 
 After the restart, I signed into CLIENT01 using:
 
 `EILEENLAB\sjohnson`
 
-The logged-in identity was verified using:
+I verified the logged-in identity using:
 
 ```cmd
 whoami
@@ -261,7 +263,7 @@ Result:
 eileenlab\sjohnson
 ```
 
-The workstation hostname was verified with:
+I verified the workstation hostname using:
 
 ```cmd
 hostname
@@ -273,7 +275,7 @@ Result:
 CLIENT01
 ```
 
-The authenticating Domain Controller was verified using:
+I also verified which Domain Controller authenticated the session using:
 
 ```cmd
 echo %logonserver%
@@ -285,11 +287,11 @@ Result:
 \\DC
 ```
 
-This confirmed that Sarah's domain account was authenticated against the Domain Controller rather than a local Windows account.
+This confirmed that Sarah's domain account was successfully authenticated against the Domain Controller rather than using a local Windows account.
 
 ---
 
-## Active Directory Computer Management
+# Active Directory Computer Management
 
 When CLIENT01 joined the domain, Active Directory automatically created a computer object for it.
 
@@ -324,21 +326,17 @@ Using Active Directory Users and Computers, I:
 
 This demonstrated the difference between an administrator resetting a password and the user establishing their own password during the next authentication.
 
----
-
 ## Disabled User Account
 
 I intentionally disabled Sarah Johnson's Active Directory account.
 
 When attempting to authenticate from CLIENT01, Windows returned:
 
-**Your account has been disabled. Please see your system administrator.**
+> Your account has been disabled. Please see your system administrator.
 
-I then returned to Active Directory Users and Computers, enabled the account, and verified that Sarah could authenticate again using the same password.
+I returned to Active Directory Users and Computers, enabled the account, and verified that Sarah could authenticate again using the same password.
 
 This demonstrated that authentication failures are not always password-related and that account status should be checked during troubleshooting.
-
----
 
 ## Account Lockout and Group Policy
 
@@ -346,7 +344,7 @@ Repeated incorrect password attempts initially did not lock the account.
 
 I investigated the domain's Account Lockout Policy and found that the lockout threshold was not configured to trigger a lockout.
 
-Using Group Policy Management, I configured an account lockout policy with:
+Using Group Policy Management, I configured:
 
 | Setting | Value |
 |---|---|
@@ -354,29 +352,17 @@ Using Group Policy Management, I configured an account lockout policy with:
 | Account lockout duration | 10 minutes |
 | Reset account lockout counter after | 10 minutes |
 
-The policy was applied to CLIENT01 using:
-
-```cmd
-gpupdate /force
-```
-
 I then intentionally entered incorrect credentials and successfully triggered an Active Directory account lockout.
 
 CLIENT01 returned:
 
-**The referenced account is currently locked out and may not be logged on to.**
+> The referenced account is currently locked out and may not be logged on to.
 
 Using Sarah Johnson's Account properties in ADUC, I confirmed that Active Directory showed the account as locked.
 
 I unlocked the account and successfully verified authentication from CLIENT01 using the correct password.
 
-This scenario demonstrated:
-
-- Group Policy configuration
-- Account lockout behavior
-- Identifying the difference between incorrect credentials and a locked account
-- Unlocking an Active Directory user
-- Verifying the resolution from the affected workstation
+This scenario provided hands-on experience with Group Policy configuration, account lockout behavior, Active Directory account administration, and client-side verification.
 
 ---
 
@@ -401,9 +387,9 @@ Network path:
 
 Instead of assigning access directly to an individual user, I granted the Active Directory `HR` security group **Read/Write** access.
 
-Because Sarah Johnson is a member of the HR security group, her account inherited access through group membership.
+Because Sarah Johnson is a member of the HR security group, her account received access through group membership.
 
-### Client Access Verification
+## Client Access Verification
 
 From CLIENT01 while authenticated as Sarah Johnson, I opened:
 
@@ -421,37 +407,15 @@ HR-Access-Test.txt
 
 directly inside the network share from CLIENT01.
 
-The successful creation of the file confirmed that:
+The successful creation of the file confirmed that the following access model was functioning:
 
 `Domain User → Security Group → Network Share Permissions → Resource Access`
 
-was functioning as intended.
-
 ---
 
-## Troubleshooting During Deployment
+# Final CLIENT01 Verification
 
-During CLIENT01 setup, I discovered that the workstation and Domain Controller had different time-zone configurations.
-
-I checked the systems using:
-
-```cmd
-date /t
-time /t
-tzutil /g
-```
-
-The Domain Controller was configured for Eastern Standard Time while CLIENT01 was configured for Pacific Standard Time.
-
-I corrected the client time zone before completing the domain join.
-
-This was important because Active Directory authentication uses Kerberos, which is sensitive to significant time differences between domain systems.
-
----
-
-## Final CLIENT01 Verification
-
-After joining the domain, I ran:
+After the domain join, I ran:
 
 ```cmd
 ipconfig /all
@@ -468,6 +432,115 @@ and verified:
 - DNS server: `172.16.0.1`
 
 This confirmed that the domain-joined workstation retained the expected network configuration.
+
+---
+
+# Challenges & Troubleshooting Process
+
+Building the environment involved several issues that required troubleshooting rather than simply following the planned configuration steps. I documented these because diagnosing unexpected behavior was an important part of the project.
+
+## CLIENT01 Time Configuration
+
+Before completing the domain join, I discovered that CLIENT01 and the Domain Controller were configured with different time zones.
+
+I checked both systems using:
+
+```cmd
+date /t
+time /t
+tzutil /g
+```
+
+The Domain Controller was configured for Eastern Standard Time while CLIENT01 was configured for Pacific Standard Time.
+
+Because Active Directory authentication relies on Kerberos and accurate system time is important for domain authentication, I corrected the CLIENT01 time-zone configuration before continuing.
+
+After correcting the configuration, I successfully continued with the domain setup.
+
+**Troubleshooting process:**
+
+`Identify inconsistency → Compare client/server configuration → Correct configuration → Retry → Verify success`
+
+## Testing Account Lockout Behavior
+
+While testing failed login attempts, I expected Sarah's account to become locked after repeated incorrect passwords. However, the account initially remained available.
+
+Rather than assuming the test itself was broken, I investigated the domain's Account Lockout Policy.
+
+I reviewed:
+
+`Default Domain Policy → Computer Configuration → Policies → Windows Settings → Security Settings → Account Policies → Account Lockout Policy`
+
+I determined that the lockout threshold needed to be configured for the behavior I was attempting to test.
+
+I configured:
+
+| Setting | Value |
+|---|---|
+| Account lockout threshold | 2 invalid logon attempts |
+| Account lockout duration | 10 minutes |
+| Reset account lockout counter after | 10 minutes |
+
+I then repeated the failed-login test.
+
+CLIENT01 returned:
+
+> The referenced account is currently locked out and may not be logged on to.
+
+I verified the locked status in Active Directory Users and Computers, unlocked the account, and successfully authenticated again.
+
+**Troubleshooting process:**
+
+`Observe unexpected behavior → Check relevant policy → Identify configuration → Configure policy → Reproduce test → Verify expected behavior`
+
+This reinforced the importance of checking configuration and policy rather than assuming a system is using a particular default behavior.
+
+## Distinguishing Authentication Failures
+
+I intentionally created multiple account problems to observe how Windows and Active Directory behaved in each situation.
+
+I tested:
+
+- Incorrect credentials
+- Forced password change
+- Disabled account
+- Locked account
+
+Although these scenarios can all prevent normal authentication, the underlying causes and resolutions are different.
+
+For example, resetting a password would not resolve a disabled account, and entering the correct password would not allow normal authentication while an account remained locked.
+
+I used the message presented on CLIENT01 together with the user's account status in Active Directory Users and Computers to determine the appropriate administrative action.
+
+**Troubleshooting process:**
+
+`Observe symptom → Check account state → Identify cause → Apply targeted fix → Test from CLIENT01 → Confirm resolution`
+
+This gave me practice diagnosing the cause of an authentication problem before making administrative changes.
+
+## Verifying Group-Based File Access
+
+When configuring the HR network share, I used an Active Directory security group rather than granting access directly to Sarah Johnson.
+
+The access path was:
+
+`Sarah Johnson → HR Security Group → HR Network Share`
+
+After configuring the share, I tested access from CLIENT01 while signed in as Sarah.
+
+Opening the folder confirmed that the network resource was reachable, but I also wanted to verify that the assigned permissions allowed the expected action.
+
+I created:
+
+`HR-Access-Test.txt`
+
+from CLIENT01 directly inside the shared folder.
+
+The successful file creation provided end-to-end verification that the user could both reach the share and write to it through Active Directory group membership.
+
+**Verification process:**
+
+`Configure permission → Test as domain user → Perform expected action → Verify result`
 
 ---
 
@@ -537,9 +610,9 @@ This confirmed that the domain-joined workstation retained the expected network 
 
 This project helped connect individual Windows Server concepts into a functioning domain environment.
 
-Rather than configuring each service independently, I was able to see how Active Directory, DNS, DHCP, routing, Group Policy, user authentication, security groups, and shared resources interact with each other.
+Rather than configuring each service independently, I was able to see how Active Directory, DNS, DHCP, routing, Group Policy, user authentication, security groups, and shared resources interact.
 
-The troubleshooting scenarios also reinforced the importance of identifying the actual cause of an authentication or access problem before making changes.
+The troubleshooting scenarios reinforced the importance of identifying the actual cause of an authentication or access problem before making changes.
 
 For example, a user who cannot sign in may have:
 
@@ -549,26 +622,9 @@ For example, a user who cannot sign in may have:
 - A DNS or network connectivity problem
 - A domain communication problem
 
-The lab provided hands-on practice identifying these differences, making administrative changes, and verifying the solution from the client side.
+The lab provided hands-on practice identifying these differences, making administrative changes, testing solutions from the client side, and documenting the results.
 
 ---
-
-# Challenges & Troubleshooting Process
-
-Building the environment involved several issues that required troubleshooting rather than simply following the planned configuration steps. I documented these because diagnosing unexpected behavior was an important part of the project.
-
-## CLIENT01 Time Configuration
-
-Before completing the domain join, I discovered that CLIENT01 and the Domain Controller were configured with different time zones.
-
-I checked both systems using:
-
-```cmd
-date /t
-time /t
-tzutil /g
-
-
 
 # About Me
 
